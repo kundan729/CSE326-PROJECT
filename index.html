@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusPrint - College Stationery Store & Smart Print Queue System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            500: '#334e68',
+                            800: '#102a43',
+                            900: '#0b1b2b',
+                        },
+                        accent: {
+                            500: '#7c3aed',
+                            600: '#6d28d9',
+                            700: '#5b21b6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF.js for render simulation preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-accent-500 selection:text-white">
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <div class="flex h-screen overflow-hidden bg-slate-100">
+
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-navy-900 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between shadow-xl">
+            <div>
+                <!-- Brand Logo & Header -->
+                <div class="p-5 border-b border-navy-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-accent-600 rounded-lg text-white shadow-lg shadow-accent-600/30">
+                            <i data-lucide="printer" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg leading-tight tracking-wide">CampusPrint</h1>
+                            <p class="text-xs text-slate-400">Smart Queue & Store</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="p-4 space-y-1.5 text-sm font-medium">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('print-order')" id="nav-print-order" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200">
+                        <i data-lucide="file-up" class="w-5 h-5"></i>
+                        <span>New Print Order</span>
+                    </button>
+                    <button onclick="switchTab('queue-tracker')" id="nav-queue-tracker" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
+                        <span class="flex-1 text-left">Queue Tracker</span>
+                        <span id="active-queue-badge" class="hidden bg-accent-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                    <button onclick="switchTab('stationery-store')" id="nav-stationery-store" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200">
+                        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                        <span class="flex-1 text-left">Stationery Store</span>
+                        <span id="cart-count-badge" class="hidden bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                    <button onclick="switchTab('order-history')" id="nav-order-history" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200">
+                        <i data-lucide="history" class="w-5 h-5"></i>
+                        <span>Order History</span>
+                    </button>
+                    
+                    <div class="pt-4 mt-4 border-t border-navy-800">
+                        <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-300 hover:text-white">
+                            <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
+                            <span>Admin Portal</span>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- User Info Sidebar Footer -->
+            <div class="p-4 border-t border-navy-800 bg-navy-950/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-accent-600 text-white flex items-center justify-center font-bold text-sm shadow">
+                        JD
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-semibold text-white truncate" id="user-display-name">Alex Johnson</p>
+                        <p class="text-xs text-slate-400 truncate" id="user-display-id">ID: CS-2026-8942</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden md:ml-64">
+            
+            <!-- Top App Header -->
+            <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 z-30 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="md:hidden text-slate-600 hover:text-slate-900 focus:outline-none">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <h2 id="page-title" class="text-lg font-bold text-slate-800">Dashboard</h2>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Cart Button (Header Quick Access) -->
+                    <button onclick="toggleCartModal()" class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span id="header-cart-badge" class="hidden absolute top-0 right-0 w-4 h-4 bg-accent-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">0</span>
+                    </button>
+
+                    <!-- Student Quick Profile Modal Trigger -->
+                    <div class="h-8 w-px bg-slate-200"></div>
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="openProfileModal()">
+                        <span class="text-xs font-semibold px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Station Open
+                        </span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic View Viewport -->
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar bg-slate-50">
+                
+                <!-- 1. STUDENT DASHBOARD VIEW -->
+                <section id="view-dashboard" class="view-section space-y-6">
+                    <!-- Welcome Hero Banner -->
+                    <div class="bg-gradient-to-r from-navy-900 via-navy-800 to-accent-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 text-white pointer-events-none">
+                            <i data-lucide="printer" class="w-64 h-64"></i>
+                        </div>
+                        <div class="relative z-10 max-w-2xl">
+                            <span class="bg-accent-500/30 text-accent-100 border border-accent-400/30 text-xs px-3 py-1 rounded-full font-medium inline-block mb-3">Campus Stationery Hub</span>
+                            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Welcome back, <span id="dash-user-name">Alex</span>! 👋</h2>
+                            <p class="text-slate-300 text-sm sm:text-base mt-2">Skip the long queue at the college shop. Upload your documents, order stationery, and track print status in real-time!</p>
+                            
+                            <div class="mt-6 flex flex-wrap gap-3">
+                                <button onclick="switchTab('print-order')" class="bg-accent-600 hover:bg-accent-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2 text-sm">
+                                    <i data-lucide="plus-circle" class="w-4 h-4"></i> New Print Job
+                                </button>
+                                <button onclick="switchTab('stationery-store')" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium px-5 py-2.5 rounded-xl backdrop-blur-md transition-all flex items-center gap-2 text-sm">
+                                    <i data-lucide="shopping-bag" class="w-4 h-4"></i> Browse Store
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Total Orders</span>
+                                <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                                    <i data-lucide="package" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <h3 id="stat-total-orders" class="text-2xl font-bold text-slate-800">0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Print & Stationery</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Active Jobs</span>
+                                <div class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                                    <i data-lucide="loader" class="w-4 h-4 animate-spin"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <h3 id="stat-active-jobs" class="text-2xl font-bold text-slate-800">0</h3>
+                                <p class="text-xs text-amber-600 font-medium mt-1">In Queue / Printing</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Completed</span>
+                                <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <h3 id="stat-completed-jobs" class="text-2xl font-bold text-slate-800">0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Ready or Picked Up</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Spent Total</span>
+                                <div class="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                                    <i data-lucide="indian-rupee" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <h3 id="stat-total-spent" class="text-2xl font-bold text-slate-800">₹0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Lifetime spending</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions & Active Track Preview -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Recent Active Queue Widget -->
+                        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <i data-lucide="activity" class="w-5 h-5 text-accent-600"></i> Active Print Status
+                                </h3>
+                                <button onclick="switchTab('queue-tracker')" class="text-xs font-semibold text-accent-600 hover:text-accent-700">View All Queue &rarr;</button>
+                            </div>
+
+                            <div id="dash-active-queue-container" class="space-y-4">
+                                <!-- Dynamic rendering of active orders or empty state -->
+                            </div>
+                        </div>
+
+                        <!-- Quick Pricing Reference Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-4">
+                                    <i data-lucide="tag" class="w-5 h-5 text-accent-600"></i> Standard Rates
+                                </h3>
+                                <ul class="space-y-3 text-sm">
+                                    <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                                        <span class="text-slate-600 flex items-center gap-2"><i data-lucide="file" class="w-4 h-4 text-slate-400"></i> B&W Print (per page)</span>
+                                        <span class="font-bold text-slate-800">₹2.00</span>
+                                    </li>
+                                    <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                                        <span class="text-slate-600 flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4 text-accent-500"></i> Color Print (per page)</span>
+                                        <span class="font-bold text-slate-800">₹10.00</span>
+                                    </li>
+                                    <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                                        <span class="text-slate-600 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i> Spiral Binding</span>
+                                        <span class="font-bold text-slate-800">₹40.00</span>
+                                    </li>
+                                    <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                                        <span class="text-slate-600 flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-amber-500"></i> Hardbound Binding</span>
+                                        <span class="font-bold text-slate-800">₹120.00</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100">
+                                <button onclick="switchTab('print-order')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-xl text-sm transition-colors text-center block">
+                                    Calculate & Order Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. DOCUMENT PRINT ORDER FORM & INSTANT COST CALCULATOR -->
+                <section id="view-print-order" class="view-section hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        <!-- Left Panel: Interactive Print Form -->
+                        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                            <div class="border-b border-slate-100 pb-4 mb-6">
+                                <h3 class="text-lg font-bold text-slate-800">Document Upload & Configuration</h3>
+                                <p class="text-xs text-slate-500">Configure your print properties and review instant price calculation.</p>
+                            </div>
+
+                            <form id="print-form" onsubmit="handlePrintOrderSubmit(event)" class="space-y-5">
+                                <!-- Student Info Group -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Student Full Name *</label>
+                                        <input type="text" id="order-student-name" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500" placeholder="e.g., Alex Johnson">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Registration / Student ID *</label>
+                                        <input type="text" id="order-student-id" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500" placeholder="e.g., CS-2026-8942">
+                                    </div>
+                                </div>
+
+                                <!-- File Upload Simulator Zone -->
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Upload Document (PDF, DOC, DOCX) *</label>
+                                    <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-accent-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-slate-50/50 relative">
+                                        <input type="file" id="document-file-input" accept=".pdf,.doc,.docx" class="hidden" onchange="handleFileSelect(event)">
+                                        <div id="upload-prompt" class="space-y-2">
+                                            <div class="w-12 h-12 bg-accent-50 text-accent-600 rounded-full flex items-center justify-center mx-auto">
+                                                <i data-lucide="cloud-upload" class="w-6 h-6"></i>
+                                            </div>
+                                            <p class="text-sm font-semibold text-slate-700">Click or Drag & Drop document here</p>
+                                            <p class="text-xs text-slate-400">PDF, DOC, DOCX up to 25MB (Auto detects page count for PDFs)</p>
+                                        </div>
+
+                                        <!-- Selected File Info State -->
+                                        <div id="file-info-box" class="hidden flex items-center justify-between bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-left">
+                                            <div class="flex items-center gap-3 overflow-hidden">
+                                                <div class="p-2.5 bg-accent-100 text-accent-700 rounded-xl flex-shrink-0">
+                                                    <i data-lucide="file-text" class="w-6 h-6"></i>
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <p id="file-name" class="text-sm font-bold text-slate-800 truncate">assignment.pdf</p>
+                                                    <p id="file-meta" class="text-xs text-slate-500">2.4 MB • Detected 12 Pages</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" onclick="resetFileUpload(event)" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-slate-100">
+                                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Page Range and Total Count -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Total Document Pages *</label>
+                                        <input type="number" id="order-page-count" min="1" value="1" required oninput="calculateCost()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Page Range Selection</label>
+                                        <input type="text" id="order-page-range" placeholder="All, or e.g., 1-5, 8, 11-12" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500">
+                                        <p class="text-[10px] text-slate-400 mt-1">Leave empty or 'All' for complete document.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Printing Options: Color & Binding -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Color Mode *</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="colorMode" value="bw" checked onchange="calculateCost()" class="peer hidden">
+                                                <div class="p-3 text-center border border-slate-200 rounded-xl peer-checked:border-accent-600 peer-checked:bg-accent-50/50 peer-checked:text-accent-700 transition-all font-medium text-xs">
+                                                    B & W (₹2/pg)
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="colorMode" value="color" onchange="calculateCost()" class="peer hidden">
+                                                <div class="p-3 text-center border border-slate-200 rounded-xl peer-checked:border-accent-600 peer-checked:bg-accent-50/50 peer-checked:text-accent-700 transition-all font-medium text-xs">
+                                                    Color (₹10/pg)
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Binding Type *</label>
+                                        <select id="order-binding" onchange="calculateCost()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 bg-white">
+                                            <option value="none">No Binding (₹0)</option>
+                                            <option value="spiral">Spiral Binding (+₹40)</option>
+                                            <option value="hardbound">Hardbound Binding (+₹120)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Quantity & Remarks -->
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Copies Quantity *</label>
+                                        <div class="flex items-center">
+                                            <button type="button" onclick="adjustCopyQty(-1)" class="p-2.5 border border-slate-300 rounded-l-xl bg-slate-50 hover:bg-slate-100 text-slate-600"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                                            <input type="number" id="order-qty" min="1" max="50" value="1" readonly class="w-full text-center border-t border-b border-slate-300 py-2 text-sm font-bold text-slate-800">
+                                            <button type="button" onclick="adjustCopyQty(1)" class="p-2.5 border border-slate-300 rounded-r-xl bg-slate-50 hover:bg-slate-100 text-slate-600"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                                        </div>
+                                    </div>
+
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Special Instructions (Optional)</label>
+                                        <input type="text" id="order-instructions" placeholder="e.g., Back to back print, staple top left" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="w-full bg-accent-600 hover:bg-accent-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-accent-600/30 transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="printer" class="w-5 h-5"></i> Confirm & Send To Print Queue
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Right Panel: Cost Calculator Breakdown & File Preview Simulator -->
+                        <div class="lg:col-span-5 space-y-6">
+                            <!-- Live Cost Calculator Card -->
+                            <div class="bg-gradient-to-br from-navy-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+                                <div class="flex items-center justify-between border-b border-navy-800 pb-3 mb-4">
+                                    <h4 class="font-bold text-slate-200 flex items-center gap-2">
+                                        <i data-lucide="calculator" class="w-5 h-5 text-accent-400"></i> Instant Price Breakdown
+                                    </h4>
+                                    <span class="text-[10px] uppercase font-bold tracking-widest bg-accent-500/20 text-accent-300 border border-accent-500/30 px-2 py-0.5 rounded">Live Estimate</span>
+                                </div>
+
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex justify-between text-slate-300">
+                                        <span>Page Rate x Pages</span>
+                                        <span id="calc-rate-line">₹2 x 1 pg</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-300">
+                                        <span>Printing Base Subtotal</span>
+                                        <span id="calc-print-subtotal">₹2.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-300">
+                                        <span>Binding Addon</span>
+                                        <span id="calc-binding-subtotal">₹0.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-300">
+                                        <span>Copies Multiplier</span>
+                                        <span id="calc-copies-multiplier">x 1</span>
+                                    </div>
+
+                                    <div class="pt-3 border-t border-navy-800 flex justify-between items-end">
+                                        <div>
+                                            <p class="text-xs text-slate-400">Total Price Payable</p>
+                                            <p class="text-2xl font-extrabold text-white" id="calc-grand-total">₹2.00</p>
+                                        </div>
+                                        <span class="text-xs text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Taxes Incl.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Simulated Canvas Document Preview -->
+                            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <i data-lucide="eye" class="w-4 h-4 text-accent-600"></i> Simulated Print Preview
+                                    </h4>
+                                    <span id="preview-badge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Standard View</span>
+                                </div>
+                                <div class="bg-slate-100 border border-slate-200 rounded-xl h-64 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                                    <div id="preview-empty" class="text-center space-y-2">
+                                        <i data-lucide="file-text" class="w-12 h-12 text-slate-300 mx-auto"></i>
+                                        <p class="text-xs text-slate-500">Upload a PDF or DOC file to view sample sheet layout.</p>
+                                    </div>
+                                    <!-- Canvas Page Simulation Container -->
+                                    <div id="preview-canvas-container" class="hidden w-full h-full flex flex-col items-center justify-center">
+                                        <div id="simulated-paper" class="w-40 h-52 bg-white shadow-md rounded border border-slate-300 p-3 flex flex-col justify-between transition-all">
+                                            <div class="space-y-1.5">
+                                                <div class="h-2 bg-slate-800 rounded w-3/4"></div>
+                                                <div class="h-1 bg-slate-300 rounded w-full"></div>
+                                                <div class="h-1 bg-slate-300 rounded w-5/6"></div>
+                                                <div class="h-1 bg-slate-300 rounded w-4/6"></div>
+                                            </div>
+                                            <div class="py-2 border-y border-slate-100 space-y-1">
+                                                <div class="h-1 bg-slate-200 rounded w-full"></div>
+                                                <div class="h-1 bg-slate-200 rounded w-full"></div>
+                                                <div class="h-1 bg-slate-200 rounded w-2/3"></div>
+                                            </div>
+                                            <div class="text-[8px] text-slate-400 flex justify-between items-center">
+                                                <span>CampusPrint Sim</span>
+                                                <span id="sim-page-num">Page 1</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 3. LIVE PRINT QUEUE TRACKER -->
+                <section id="view-queue-tracker" class="view-section hidden space-y-6">
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">Live Print Queue & Progress Tracker</h3>
+                                <p class="text-xs text-slate-500">Monitor active print jobs live as they move from shop queue to printer output.</p>
+                            </div>
+                            <button onclick="renderQueueTracker()" class="self-start sm:self-auto bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Live Queue
+                            </button>
+                        </div>
+
+                        <!-- Active Queue List -->
+                        <div id="queue-jobs-container" class="space-y-6">
+                            <!-- Rendered dynamically -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. COLLEGE STATIONERY STORE & CART -->
+                <section id="view-stationery-store" class="view-section hidden space-y-6">
+                    <!-- Store Search and Categories Header -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Campus Essentials Store</h3>
+                            <p class="text-xs text-slate-500">Official college notebooks, practical record books, stationery & lab equipment.</p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-64">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                                <input type="text" id="store-search" oninput="filterStoreProducts()" placeholder="Search pens, notebooks..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div id="store-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+
+                <!-- 5. STUDENT ORDER HISTORY -->
+                <section id="view-order-history" class="view-section hidden space-y-6">
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">Order History & Invoices</h3>
+                                <p class="text-xs text-slate-500">View past stationery purchases and document print jobs.</p>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50/50">
+                                        <th class="py-3 px-4">Order ID & Date</th>
+                                        <th class="py-3 px-4">Type</th>
+                                        <th class="py-3 px-4">Details</th>
+                                        <th class="py-3 px-4">Total Price</th>
+                                        <th class="py-3 px-4">Status</th>
+                                        <th class="py-3 px-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. ADMIN DASHBOARD VIEW -->
+                <section id="view-admin" class="view-section hidden space-y-6">
+                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between text-amber-900">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="shield-alert" class="w-6 h-6 text-amber-600 flex-shrink-0"></i>
+                            <div>
+                                <h4 class="font-bold text-sm">Stationery Shop Operator Mode</h4>
+                                <p class="text-xs text-amber-800">Control print queues, mark jobs printed/ready, manage stock inventory & track total revenue.</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full">Admin View</span>
+                    </div>
+
+                    <!-- Admin Summary Analytics -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Total Queue Jobs</p>
+                            <h3 id="admin-stat-total-jobs" class="text-2xl font-extrabold text-slate-800 mt-2">0</h3>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Pending In-Queue</p>
+                            <h3 id="admin-stat-pending" class="text-2xl font-extrabold text-amber-600 mt-2">0</h3>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Total Revenue Collected</p>
+                            <h3 id="admin-stat-revenue" class="text-2xl font-extrabold text-emerald-600 mt-2">₹0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Admin Search & Filter Bar -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                        <div class="relative w-full sm:w-80">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                            <input type="text" id="admin-search-input" oninput="renderAdminQueue()" placeholder="Search Order ID or Student ID..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <select id="admin-status-filter" onchange="renderAdminQueue()" class="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white">
+                                <option value="all">All Order Statuses</option>
+                                <option value="received">Order Received</option>
+                                <option value="printing">Printing in Progress</option>
+                                <option value="ready">Ready for Pickup</option>
+                                <option value="completed">Completed / Picked Up</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Admin Orders List / Action Queue Table -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                            <h4 class="font-bold text-slate-800 text-sm">Print Orders & Store Orders Management</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50">
+                                        <th class="py-3 px-4">Order Details</th>
+                                        <th class="py-3 px-4">Student</th>
+                                        <th class="py-3 px-4">Specifications</th>
+                                        <th class="py-3 px-4">Amount</th>
+                                        <th class="py-3 px-4">Current Status</th>
+                                        <th class="py-3 px-4 text-center">Update Progress Stage</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-orders-table" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- SHOPPING CART MODAL SLIDE-OVER -->
+    <div id="cart-modal" class="fixed inset-0 z-50 hidden overflow-hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="toggleCartModal()"></div>
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between">
+                <div>
+                    <!-- Modal Header -->
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="shopping-cart" class="w-5 h-5 text-accent-600"></i>
+                            <h3 class="font-bold text-slate-800">Stationery Cart</h3>
+                        </div>
+                        <button onclick="toggleCartModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Cart Item List -->
+                    <div id="cart-items-container" class="p-5 space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar">
+                        <!-- Dynamic Cart items -->
+                    </div>
+                </div>
+
+                <!-- Cart Footer & Checkout -->
+                <div class="p-5 border-t border-slate-100 bg-slate-50">
+                    <div class="space-y-2 mb-4 text-sm">
+                        <div class="flex justify-between text-slate-500">
+                            <span>Subtotal</span>
+                            <span id="cart-subtotal" class="font-semibold text-slate-700">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500">
+                            <span>Campus Tax & Store Service</span>
+                            <span class="font-semibold text-slate-700">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-base font-extrabold text-slate-900 pt-2 border-t border-slate-200">
+                            <span>Total Amount</span>
+                            <span id="cart-grand-total" class="text-accent-700">₹0.00</span>
+                        </div>
+                    </div>
+                    <button onclick="checkoutStationeryCart()" class="w-full bg-accent-600 hover:bg-accent-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-accent-600/30 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i> Place Stationery Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDENT PROFILE MODAL -->
+    <div id="profile-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeProfileModal()"></div>
+        <div class="relative bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i data-lucide="user-check" class="w-5 h-5 text-accent-600"></i> Edit Student Profile
+            </h3>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Full Name</label>
+                    <input type="text" id="edit-user-name" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Student / Registration ID</label>
+                    <input type="text" id="edit-user-id" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeProfileModal()" class="flex-1 py-2 rounded-xl border border-slate-300 text-slate-600 font-medium text-sm">Cancel</button>
+                <button onclick="saveUserProfile()" class="flex-1 py-2 rounded-xl bg-accent-600 text-white font-semibold text-sm">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APPLICATION LOGIC JS -->
+    <script>
+        // Data Structures & Initial State
+        const INITIAL_PRODUCTS = [
+            { id: 1, name: 'A4 Practical Spiral Notebook (200 Pgs)', category: 'Notebooks', price: 110, image: 'https://placehold.co/300x200/102a43/ffffff?text=Practical+Notebook' },
+            { id: 2, name: 'Blue Gel Pen Set (Pack of 5)', category: 'Pens', price: 50, image: 'https://placehold.co/300x200/334e68/ffffff?text=Gel+Pens+Pack' },
+            { id: 3, name: 'Engineering Drawing Sheet (A2 Size - 5 Sheets)', category: 'Sheets', price: 60, image: 'https://placehold.co/300x200/7c3aed/ffffff?text=Drawing+Sheets' },
+            { id: 4, name: 'Clear Project File Folder (Button Closure)', category: 'Files', price: 25, image: 'https://placehold.co/300x200/0b1b2b/ffffff?text=Project+Folder' },
+            { id: 5, name: 'Faber Highlighters (Multicolor Set of 4)', category: 'Highlighters', price: 140, image: 'https://placehold.co/300x200/6d28d9/ffffff?text=Highlighters' },
+            { id: 6, name: 'Computer Practical Observation Manual', category: 'Lab Manuals', price: 85, image: 'https://placehold.co/300x200/5b21b6/ffffff?text=Lab+Manual' },
+            { id: 7, name: 'HB Pencils Box with Eraser & Sharpener', category: 'Pencils', price: 45, image: 'https://placehold.co/300x200/102a43/ffffff?text=Pencil+Box' },
+            { id: 8, name: 'Stick Notes & Index Tabs Combo', category: 'Stationery', price: 75, image: 'https://placehold.co/300x200/334e68/ffffff?text=Sticky+Notes' }
+        ];
+
+        let currentUser = JSON.parse(localStorage.getItem('cp_user')) || {
+            name: 'Alex Johnson',
+            id: 'CS-2026-8942'
+        };
+
+        let orders = JSON.parse(localStorage.getItem('cp_orders')) || [
+            {
+                id: 'ORD-8921',
+                type: 'print',
+                studentName: 'Alex Johnson',
+                studentId: 'CS-2026-8942',
+                fileName: 'Data_Structures_Lab_Report.pdf',
+                pageCount: 15,
+                pageRange: 'All',
+                colorMode: 'bw',
+                binding: 'spiral',
+                qty: 1,
+                totalCost: 70, // 15*2 + 40
+                status: 'printing', // 'received', 'printing', 'ready', 'completed'
+                date: new Date(Date.now() - 35 * 60000).toISOString(),
+                queuePos: 2,
+                estWaitMinutes: 8
+            },
+            {
+                id: 'ORD-7124',
+                type: 'stationery',
+                studentName: 'Alex Johnson',
+                studentId: 'CS-2026-8942',
+                items: [{ name: 'A4 Practical Spiral Notebook', qty: 2, price: 110 }],
+                totalCost: 220,
+                status: 'ready',
+                date: new Date(Date.now() - 120 * 60000).toISOString(),
+                queuePos: 0,
+                estWaitMinutes: 0
+            }
+        ];
+
+        let cart = JSON.parse(localStorage.getItem('cp_cart')) || [];
+        let uploadedFileData = null;
+
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            updateUserInfoDisplay();
+            switchTab('dashboard');
+            calculateCost();
+            renderStoreProducts();
+            renderCartUI();
+            updateDashboardStats();
+
+            // Setup File Drag and Drop listeners
+            const dropZone = document.getElementById('drop-zone');
+            if (dropZone) {
+                dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-accent-500', 'bg-accent-50/20'); });
+                dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-accent-500', 'bg-accent-50/20'); });
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-accent-500', 'bg-accent-50/20');
+                    if (e.dataTransfer.files.length) {
+                        document.getElementById('document-file-input').files = e.dataTransfer.files;
+                        handleFileSelect({ target: { files: e.dataTransfer.files } });
+                    }
+                });
+                dropZone.addEventListener('click', (e) => {
+                    if (e.target.closest('#file-info-box')) return;
+                    document.getElementById('document-file-input').click();
+                });
+            }
+        });
+
+        // Save State Helpers
+        function saveOrders() {
+            localStorage.setItem('cp_orders', JSON.stringify(orders));
+            updateDashboardStats();
+            renderQueueTracker();
+            renderOrderHistory();
+            renderAdminQueue();
+        }
+
+        function saveCart() {
+            localStorage.setItem('cp_cart', JSON.stringify(cart));
+            renderCartUI();
+        }
+
+        // Navigation & View Handler
+        function switchTab(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`view-${viewId}`);
+            if (targetView) targetView.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-navy-800', 'text-white', 'font-semibold');
+                btn.classList.add('text-slate-300');
+            });
+            const activeBtn = document.getElementById(`nav-${viewId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-navy-800', 'text-white', 'font-semibold');
+                activeBtn.classList.remove('text-slate-300');
+            }
+
+            // Update Page Header Title
+            const titleMap = {
+                'dashboard': 'Student Dashboard',
+                'print-order': 'Document Print Order Form',
+                'queue-tracker': 'Live Print Queue Tracker',
+                'stationery-store': 'College Stationery Store',
+                'order-history': 'My Orders & Invoices',
+                'admin': 'Admin Control & Queue Management'
+            };
+            document.getElementById('page-title').textContent = titleMap[viewId] || 'CampusPrint';
+
+            // Close mobile sidebar if open
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth < 768) {
+                sidebar.classList.add('-translate-x-full');
+            }
+
+            // Trigger targeted view updates
+            if (viewId === 'dashboard') updateDashboardStats();
+            if (viewId === 'queue-tracker') renderQueueTracker();
+            if (viewId === 'order-history') renderOrderHistory();
+            if (viewId === 'admin') renderAdminQueue();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-slate-900 border-emerald-500' : 'bg-slate-900 border-rose-500';
+            const icon = type === 'success' ? 'check-circle-2' : 'alert-circle';
+            const iconColor = type === 'success' ? 'text-emerald-400' : 'text-rose-400';
+
+            toast.className = `${bgClass} border-l-4 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-5 h-5 ${iconColor} flex-shrink-0"></i>
+                <p class="text-xs sm:text-sm font-medium flex-1">${message}</p>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Profile Modal Logic
+        function openProfileModal() {
+            document.getElementById('edit-user-name').value = currentUser.name;
+            document.getElementById('edit-user-id').value = currentUser.id;
+            document.getElementById('profile-modal').classList.remove('hidden');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profile-modal').classList.add('hidden');
+        }
+
+        function saveUserProfile() {
+            const name = document.getElementById('edit-user-name').value.trim();
+            const id = document.getElementById('edit-user-id').value.trim();
+            if (!name || !id) return showToast('Please fill out all user profile fields.', 'error');
+
+            currentUser = { name, id };
+            localStorage.setItem('cp_user', JSON.stringify(currentUser));
+            updateUserInfoDisplay();
+            closeProfileModal();
+            showToast('Student profile updated successfully!');
+        }
+
+        function updateUserInfoDisplay() {
+            document.getElementById('user-display-name').textContent = currentUser.name;
+            document.getElementById('user-display-id').textContent = `ID: ${currentUser.id}`;
+            document.getElementById('dash-user-name').textContent = currentUser.name.split(' ')[0];
+            document.getElementById('order-student-name').value = currentUser.name;
+            document.getElementById('order-student-id').value = currentUser.id;
+        }
+
+        // FILE UPLOAD SIMULATION & PDF PARSER
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const allowedExts = ['pdf', 'doc', 'docx'];
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowedExts.includes(ext)) {
+                showToast('Invalid file format. Please upload PDF, DOC, or DOCX files.', 'error');
+                return;
+            }
+
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            uploadedFileData = {
+                name: file.name,
+                size: `${sizeMB} MB`,
+                rawFile: file
+            };
+
+            document.getElementById('upload-prompt').classList.add('hidden');
+            const infoBox = document.getElementById('file-info-box');
+            infoBox.classList.remove('hidden');
+            document.getElementById('file-name').textContent = file.name;
+
+            // Simulated PDF page detector
+            if (ext === 'pdf') {
+                const reader = new FileReader();
+                reader.onload = function () {
+                    const typedarray = new Uint8Array(this.result);
+                    if (window.pdfjsLib) {
+                        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                            document.getElementById('order-page-count').value = pdf.numPages;
+                            document.getElementById('file-meta').textContent = `${sizeMB} MB • Detected ${pdf.numPages} Pages`;
+                            calculateCost();
+                            updateSimulatedPreview(pdf.numPages);
+                        }).catch(() => {
+                            fallbackPageCount(sizeMB);
+                        });
+                    } else {
+                        fallbackPageCount(sizeMB);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                fallbackPageCount(sizeMB);
+            }
+
+            showToast(`Document "${file.name}" uploaded successfully!`);
+        }
+
+        function fallbackPageCount(sizeMB) {
+            const estimatedPages = Math.max(1, Math.floor(Math.random() * 15) + 2);
+            document.getElementById('order-page-count').value = estimatedPages;
+            document.getElementById('file-meta').textContent = `${sizeMB} MB • Est. ${estimatedPages} Pages`;
+            calculateCost();
+            updateSimulatedPreview(estimatedPages);
+        }
+
+        function resetFileUpload(e) {
+            if (e) e.stopPropagation();
+            uploadedFileData = null;
+            document.getElementById('document-file-input').value = '';
+            document.getElementById('upload-prompt').classList.remove('hidden');
+            document.getElementById('file-info-box').classList.add('hidden');
+            document.getElementById('preview-empty').classList.remove('hidden');
+            document.getElementById('preview-canvas-container').classList.add('hidden');
+            calculateCost();
+        }
+
+        function updateSimulatedPreview(pages) {
+            document.getElementById('preview-empty').classList.add('hidden');
+            document.getElementById('preview-canvas-container').classList.remove('hidden');
+            document.getElementById('sim-page-num').textContent = `1 of ${pages} Pgs`;
+        }
+
+        // INSTANT COST CALCULATOR LOGIC
+        function calculateCost() {
+            const pagesInput = parseInt(document.getElementById('order-page-count').value) || 1;
+            const colorMode = document.querySelector('input[name="colorMode"]:checked')?.value || 'bw';
+            const binding = document.getElementById('order-binding').value;
+            const qty = parseInt(document.getElementById('order-qty').value) || 1;
+
+            const pageRate = colorMode === 'bw' ? 2 : 10;
+            const bindingRate = binding === 'spiral' ? 40 : (binding === 'hardbound' ? 120 : 0);
+
+            const printSubtotal = pagesInput * pageRate;
+            const bindingSubtotal = bindingRate;
+            const totalPerCopy = printSubtotal + bindingSubtotal;
+            const grandTotal = totalPerCopy * qty;
+
+            // Render live cost breakdown
+            document.getElementById('calc-rate-line').textContent = `₹${pageRate} x ${pagesInput} pg${pagesInput > 1 ? 's' : ''}`;
+            document.getElementById('calc-print-subtotal').textContent = `₹${printSubtotal.toFixed(2)}`;
+            document.getElementById('calc-binding-subtotal').textContent = `₹${bindingSubtotal.toFixed(2)}`;
+            document.getElementById('calc-copies-multiplier').textContent = `x ${qty} ${qty > 1 ? 'copies' : 'copy'}`;
+            document.getElementById('calc-grand-total').textContent = `₹${grandTotal.toFixed(2)}`;
+
+            return grandTotal;
+        }
+
+        function adjustCopyQty(delta) {
+            const qtyInput = document.getElementById('order-qty');
+            let current = parseInt(qtyInput.value) || 1;
+            current = Math.max(1, Math.min(50, current + delta));
+            qtyInput.value = current;
+            calculateCost();
+        }
+
+        // PRINT ORDER SUBMISSION
+        function handlePrintOrderSubmit(e) {
+            e.preventDefault();
+
+            if (!uploadedFileData) {
+                showToast('Please upload a document before placing order.', 'error');
+                return;
+            }
+
+            const name = document.getElementById('order-student-name').value.trim();
+            const id = document.getElementById('order-student-id').value.trim();
+            const pageCount = parseInt(document.getElementById('order-page-count').value) || 1;
+            const pageRange = document.getElementById('order-page-range').value.trim() || 'All';
+            const colorMode = document.querySelector('input[name="colorMode"]:checked').value;
+            const binding = document.getElementById('order-binding').value;
+            const qty = parseInt(document.getElementById('order-qty').value) || 1;
+            const instructions = document.getElementById('order-instructions').value.trim();
+
+            const grandTotal = calculateCost();
+            const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // Count active jobs to calculate wait time & queue position
+            const activeQueueCount = orders.filter(o => o.status === 'received' || o.status === 'printing').length;
+            const queuePos = activeQueueCount + 1;
+            const estWait = queuePos * 5; // 5 mins per queue position
+
+            const newOrder = {
+                id: newOrderId,
+                type: 'print',
+                studentName: name,
+                studentId: id,
+                fileName: uploadedFileData.name,
+                pageCount: pageCount,
+                pageRange: pageRange,
+                colorMode: colorMode,
+                binding: binding,
+                qty: qty,
+                instructions: instructions,
+                totalCost: grandTotal,
+                status: 'received',
+                date: new Date().toISOString(),
+                queuePos: queuePos,
+                estWaitMinutes: estWait
+            };
+
+            orders.unshift(newOrder);
+            saveOrders();
+
+            showToast(`Order ${newOrderId} placed successfully! Redirecting to queue tracker...`);
+            resetFileUpload();
+            document.getElementById('print-form').reset();
+            document.getElementById('order-qty').value = 1;
+            updateUserInfoDisplay();
+
+            setTimeout(() => {
+                switchTab('queue-tracker');
+            }, 600);
+        }
+
+        // LIVE PRINT QUEUE TRACKER RENDER
+        function renderQueueTracker() {
+            const container = document.getElementById('queue-jobs-container');
+            container.innerHTML = '';
+
+            const userActiveOrders = orders.filter(o => o.studentId === currentUser.id && o.status !== 'completed');
+
+            if (userActiveOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 space-y-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                        <i data-lucide="check-circle" class="w-12 h-12 text-slate-300 mx-auto"></i>
+                        <h4 class="font-bold text-slate-700 text-base">No Active Print Orders in Queue</h4>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">You have no pending documents currently being printed. Start a new print order to track progress live.</p>
+                        <button onclick="switchTab('print-order')" class="bg-accent-600 text-white font-semibold text-xs px-4 py-2 rounded-xl">Create Print Order</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            userActiveOrders.forEach(order => {
+                const isPrint = order.type === 'print';
+                const stages = [
+                    { key: 'received', label: '1. Order Received', desc: 'Sent to campus store printer queue' },
+                    { key: 'printing', label: '2. Printing in Progress', desc: 'Document currently spooling/printing' },
+                    { key: 'ready', label: '3. Ready for Pickup', desc: 'Available at shop counter' }
+                ];
+
+                let currentStageIndex = 0;
+                if (order.status === 'printing') currentStageIndex = 1;
+                if (order.status === 'ready') currentStageIndex = 2;
+
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5";
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="p-2.5 bg-accent-50 text-accent-600 rounded-xl font-mono font-bold text-sm">${order.id}</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">${isPrint ? order.fileName : 'Stationery Purchase'}</h4>
+                                <p class="text-xs text-slate-400">${new Date(order.date).toLocaleString()} • ${isPrint ? `${order.pageCount} pgs (${order.colorMode.toUpperCase()})` : 'Store Items'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="text-right">
+                                <span class="text-slate-400 block">Estimated Wait</span>
+                                <span class="font-bold text-slate-800 flex items-center gap-1 justify-end">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-500"></i> ${order.status === 'ready' ? '0 Mins (Ready!)' : `~${order.estWaitMinutes} mins`}
+                                </span>
+                            </div>
+                            <div class="text-right border-l border-slate-200 pl-4">
+                                <span class="text-slate-400 block">Queue Spot</span>
+                                <span class="font-bold text-accent-700 text-sm">#${order.queuePos > 0 ? order.queuePos : 'Current'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workflow Stage Indicators -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+                        ${stages.map((stage, idx) => {
+                            const isDone = idx < currentStageIndex;
+                            const isCurrent = idx === currentStageIndex;
+                            
+                            let boxStyle = "bg-slate-50 border-slate-200 text-slate-400";
+                            let iconSvg = "circle";
+                            if (isDone) {
+                                boxStyle = "bg-emerald-50 border-emerald-300 text-emerald-700";
+                                iconSvg = "check-circle-2";
+                            } else if (isCurrent) {
+                                boxStyle = "bg-accent-50 border-accent-400 text-accent-700 ring-2 ring-accent-500/20";
+                                iconSvg = "loader";
+                            }
+
+                            return `
+                                <div class="border rounded-xl p-3.5 flex items-start gap-3 transition-all ${boxStyle}">
+                                    <i data-lucide="${iconSvg}" class="w-5 h-5 ${isCurrent ? 'animate-spin text-accent-600' : ''} flex-shrink-0 mt-0.5"></i>
+                                    <div>
+                                        <p class="font-bold text-xs uppercase tracking-wide">${stage.label}</p>
+                                        <p class="text-[11px] opacity-80 mt-0.5">${stage.desc}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    ${order.status === 'ready' ? `
+                        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-800">
+                            <span class="flex items-center gap-2 font-medium">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Order ready for pickup at Main Stationery Counter!
+                            </span>
+                            <button onclick="confirmPickup('${order.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                Confirm Picked Up
+                            </button>
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function confirmPickup(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.status = 'completed';
+                order.queuePos = 0;
+                saveOrders();
+                showToast(`Order ${orderId} marked as completed.`);
+            }
+        }
+
+        // STATIONERY STORE & CART SYSTEM
+        function renderStoreProducts(filtered = null) {
+            const grid = document.getElementById('store-products-grid');
+            grid.innerHTML = '';
+
+            const itemsToRender = filtered || INITIAL_PRODUCTS;
+
+            itemsToRender.forEach(prod => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group";
+                card.innerHTML = `
+                    <div>
+                        <div class="h-36 bg-slate-100 overflow-hidden relative">
+                            <img src="${prod.image}" alt="${prod.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://placehold.co/300x200/102a43/ffffff?text=Stationery'">
+                            <span class="absolute top-2 right-2 bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">${prod.category}</span>
+                        </div>
+                        <div class="p-4 space-y-1">
+                            <h4 class="font-bold text-slate-800 text-sm line-clamp-2">${prod.name}</h4>
+                            <p class="text-base font-extrabold text-accent-700">₹${prod.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="p-4 pt-0">
+                        <button onclick="addToCart(${prod.id})" class="w-full bg-slate-900 hover:bg-accent-600 text-white font-medium py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                            <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i> Add to Cart
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function filterStoreProducts() {
+            const query = document.getElementById('store-search').value.toLowerCase().trim();
+            const filtered = INITIAL_PRODUCTS.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query));
+            renderStoreProducts(filtered);
+        }
+
+        function addToCart(productId) {
+            const product = INITIAL_PRODUCTS.find(p => p.id === productId);
+            if (!product) return;
+
+            const existing = cart.find(item => item.id === productId);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            saveCart();
+            showToast(`Added "${product.name}" to cart.`);
+        }
+
+        function updateCartQty(productId, delta) {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    cart = cart.filter(i => i.id !== productId);
+                }
+                saveCart();
+            }
+        }
+
+        function renderCartUI() {
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = '';
+
+            let subtotal = 0;
+            const totalCount = cart.reduce((sum, item) => sum + item.qty, 0);
+
+            // Update Badges
+            const activeBadges = [document.getElementById('cart-count-badge'), document.getElementById('header-cart-badge')];
+            activeBadges.forEach(b => {
+                if (b) {
+                    b.textContent = totalCount;
+                    if (totalCount > 0) b.classList.remove('hidden');
+                    else b.classList.add('hidden');
+                }
+            });
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 space-y-2">
+                        <i data-lucide="shopping-bag" class="w-10 h-10 mx-auto text-slate-300"></i>
+                        <p class="text-xs">Your cart is currently empty.</p>
+                    </div>
+                `;
+            } else {
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.qty;
+                    subtotal += itemTotal;
+
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/70";
+                    row.innerHTML = `
+                        <div class="overflow-hidden pr-2">
+                            <p class="font-bold text-xs text-slate-800 truncate">${item.name}</p>
+                            <p class="text-[11px] text-slate-500">₹${item.price} each</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center border border-slate-300 rounded-lg bg-white">
+                                <button onclick="updateCartQty(${item.id}, -1)" class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100">-</button>
+                                <span class="px-2 text-xs font-bold text-slate-800">${item.qty}</span>
+                                <button onclick="updateCartQty(${item.id}, 1)" class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100">+</button>
+                            </div>
+                            <span class="text-xs font-bold text-slate-900 w-12 text-right">₹${itemTotal}</span>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+
+            document.getElementById('cart-subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('cart-grand-total').textContent = `₹${subtotal.toFixed(2)}`;
+            lucide.createIcons();
+        }
+
+        function toggleCartModal() {
+            const modal = document.getElementById('cart-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function checkoutStationeryCart() {
+            if (cart.length === 0) return showToast('Your cart is empty!', 'error');
+
+            const totalCost = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const newOrder = {
+                id: newOrderId,
+                type: 'stationery',
+                studentName: currentUser.name,
+                studentId: currentUser.id,
+                items: [...cart],
+                totalCost: totalCost,
+                status: 'received',
+                date: new Date().toISOString(),
+                queuePos: 1,
+                estWaitMinutes: 5
+            };
+
+            orders.unshift(newOrder);
+            saveOrders();
+
+            cart = [];
+            saveCart();
+            toggleCartModal();
+            showToast(`Stationery order ${newOrderId} placed successfully!`);
+            switchTab('queue-tracker');
+        }
+
+        // ORDER HISTORY VIEW RENDER
+        function renderOrderHistory() {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
+
+            const userOrders = orders.filter(o => o.studentId === currentUser.id);
+
+            if (userOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">No prior order history found.</td></tr>`;
+                return;
+            }
+
+            userOrders.forEach(ord => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors";
+
+                let statusBadge = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs rounded-full font-medium">In Queue</span>`;
+                if (ord.status === 'printing') statusBadge = `<span class="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">Printing</span>`;
+                if (ord.status === 'ready') statusBadge = `<span class="px-2.5 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">Ready</span>`;
+                if (ord.status === 'completed') statusBadge = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full font-medium">Completed</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-mono text-xs font-bold text-slate-700">
+                        ${ord.id}
+                        <span class="block font-sans text-[11px] font-normal text-slate-400">${new Date(ord.date).toLocaleDateString()}</span>
+                    </td>
+                    <td class="py-3.5 px-4 uppercase text-xs font-semibold text-slate-600">${ord.type}</td>
+                    <td class="py-3.5 px-4 text-xs font-medium text-slate-800">
+                        ${ord.type === 'print' ? ord.fileName : `${ord.items.length} Store Items`}
+                    </td>
+                    <td class="py-3.5 px-4 text-xs font-bold text-slate-900">₹${ord.totalCost.toFixed(2)}</td>
+                    <td class="py-3.5 px-4">${statusBadge}</td>
+                    <td class="py-3.5 px-4 text-right">
+                        <button onclick="downloadReceipt('${ord.id}')" class="text-xs text-accent-600 hover:text-accent-800 font-semibold flex items-center justify-end gap-1">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Receipt
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function downloadReceipt(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const receiptWindow = window.open('', '_blank');
+            receiptWindow.document.write(`
+                <html>
+                <head><title>Receipt - ${order.id}</title><style>body{font-family:sans-serif;padding:30px;color:#1e293b;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #cbd5e1;padding:10px;text-align:left;}</style></head>
+                <body>
+                    <h2>CampusPrint Receipt</h2>
+                    <p><strong>Order ID:</strong> ${order.id}</p>
+                    <p><strong>Student Name:</strong> ${order.studentName} (${order.studentId})</p>
+                    <p><strong>Date:</strong> ${new Date(order.date).toLocaleString()}</p>
+                    <hr/>
+                    <p><strong>Total Paid:</strong> ₹${order.totalCost.toFixed(2)}</p>
+                    <p><strong>Status:</strong> ${order.status.toUpperCase()}</p>
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `);
+            receiptWindow.document.close();
+        }
+
+        // ADMIN QUEUE MANAGEMENT VIEW RENDER
+        function renderAdminQueue() {
+            const table = document.getElementById('admin-orders-table');
+            table.innerHTML = '';
+
+            const searchQuery = document.getElementById('admin-search-input').value.toLowerCase().trim();
+            const filterStatus = document.getElementById('admin-status-filter').value;
+
+            let filtered = orders.filter(o => {
+                const matchesSearch = o.id.toLowerCase().includes(searchQuery) || o.studentId.toLowerCase().includes(searchQuery) || o.studentName.toLowerCase().includes(searchQuery);
+                const matchesStatus = filterStatus === 'all' || o.status === filterStatus;
+                return matchesSearch && matchesStatus;
+            });
+
+            // Update Admin Analytics
+            document.getElementById('admin-stat-total-jobs').textContent = orders.length;
+            document.getElementById('admin-stat-pending').textContent = orders.filter(o => o.status !== 'completed').length;
+            const rev = orders.reduce((sum, o) => sum + o.totalCost, 0);
+            document.getElementById('admin-stat-revenue').textContent = `₹${rev.toFixed(2)}`;
+
+            if (filtered.length === 0) {
+                table.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">No orders match filter criteria.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(ord => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-xs font-bold text-slate-800">
+                        ${ord.id}
+                        <span class="block text-[10px] font-sans font-normal text-slate-400">${new Date(ord.date).toLocaleTimeString()}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="font-bold text-xs text-slate-800 block">${ord.studentName}</span>
+                        <span class="text-[11px] text-slate-400 font-mono">${ord.studentId}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-slate-600">
+                        ${ord.type === 'print' ? `${ord.fileName} (${ord.pageCount} pgs, ${ord.colorMode.toUpperCase()})` : `Stationery (${ord.items?.length || 0} items)`}
+                    </td>
+                    <td class="py-3 px-4 text-xs font-bold text-slate-900">₹${ord.totalCost.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs font-semibold capitalize">${ord.status}</td>
+                    <td class="py-3 px-4 text-center">
+                        <select onchange="updateOrderStatus('${ord.id}', this.value)" class="text-xs bg-slate-100 border border-slate-300 rounded-lg px-2 py-1 focus:outline-none">
+                            <option value="received" ${ord.status === 'received' ? 'selected' : ''}>1. Received</option>
+                            <option value="printing" ${ord.status === 'printing' ? 'selected' : ''}>2. Printing</option>
+                            <option value="ready" ${ord.status === 'ready' ? 'selected' : ''}>3. Ready for Pickup</option>
+                            <option value="completed" ${ord.status === 'completed' ? 'selected' : ''}>4. Completed</option>
+                        </select>
+                    </td>
+                `;
+                table.appendChild(tr);
+            });
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.status = newStatus;
+                if (newStatus === 'ready') order.estWaitMinutes = 0;
+                if (newStatus === 'completed') order.queuePos = 0;
+                saveOrders();
+                showToast(`Status of ${orderId} updated to "${newStatus.toUpperCase()}"`);
+            }
+        }
+
+        // DASHBOARD SUMMARY & LIVE WIDGETS
+        function updateDashboardStats() {
+            const userOrders = orders.filter(o => o.studentId === currentUser.id);
+            const activeJobs = userOrders.filter(o => o.status === 'received' || o.status === 'printing');
+            const completedJobs = userOrders.filter(o => o.status === 'ready' || o.status === 'completed');
+            const totalSpent = userOrders.reduce((sum, o) => sum + o.totalCost, 0);
+
+            document.getElementById('stat-total-orders').textContent = userOrders.length;
+            document.getElementById('stat-active-jobs').textContent = activeJobs.length;
+            document.getElementById('stat-completed-jobs').textContent = completedJobs.length;
+            document.getElementById('stat-total-spent').textContent = `₹${totalSpent.toFixed(2)}`;
+
+            // Active Badge Sidebar
+            const queueBadge = document.getElementById('active-queue-badge');
+            if (activeJobs.length > 0) {
+                queueBadge.textContent = activeJobs.length;
+                queueBadge.classList.remove('hidden');
+            } else {
+                queueBadge.classList.add('hidden');
+            }
+
+            // Dashboard Active Tracker Container Widget
+            const activeContainer = document.getElementById('dash-active-queue-container');
+            activeContainer.innerHTML = '';
+
+            if (activeJobs.length === 0) {
+                activeContainer.innerHTML = `
+                    <div class="text-center py-6 bg-slate-50 border border-slate-200/60 rounded-xl text-slate-400 text-xs">
+                        No active queue tasks right now. Ready for your next document print!
+                    </div>
+                `;
+            } else {
+                activeJobs.slice(0, 2).forEach(job => {
+                    const el = document.createElement('div');
+                    el.className = "flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/70";
+                    el.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-accent-100 text-accent-700 rounded-lg font-mono text-xs font-bold">${job.id}</div>
+                            <div>
+                                <h4 class="font-bold text-xs text-slate-800">${job.fileName || 'Stationery Order'}</h4>
+                                <p class="text-[11px] text-slate-500">Status: <span class="text-accent-700 font-semibold capitalize">${job.status}</span></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block">Queue Spot</span>
+                            <span class="font-bold text-xs text-slate-800">#${job.queuePos}</span>
+                        </div>
+                    `;
+                    activeContainer.appendChild(el);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
